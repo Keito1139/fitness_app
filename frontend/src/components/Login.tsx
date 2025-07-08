@@ -50,13 +50,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       if (axiosError.response?.data) {
         // バックエンドからのエラーメッセージを表示
-        const errorMessages = axiosError.response.data;
-        if (errorMessages.non_field_errors) {
-          setError(errorMessages.non_field_errors[0]);
-        } else if (errorMessages.detail) {
-          setError(errorMessages.detail);
-        } else if (typeof errorMessages === "string") {
-          setError(errorMessages);
+        const errorData = axiosError.response.data;
+        if (errorData.error) {
+          setError(errorData.error);
+        } else if (errorData.non_field_errors) {
+          setError(errorData.non_field_errors[0]);
+        } else if (errorData.detail) {
+          setError(errorData.detail);
+        } else if (typeof errorData === "string") {
+          setError(errorData);
         } else {
           setError("ログインに失敗しました。");
         }
@@ -64,7 +66,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         setError("サーバーに接続できませんでした。");
       }
     } finally {
-      setLoading(false);
+      setLoading(false); // この行を追加
     }
   };
 

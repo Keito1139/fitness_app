@@ -12,7 +12,8 @@ from django.middleware.csrf import get_token
 from .models import OwnerProfile, TeacherProfile
 from .serializers import (
     OwnerLoginSerializer, UserSerializer,
-    OwnerProfileSerializer, TeacherProfileSerializer
+    OwnerProfileSerializer, TeacherProfileSerializer,
+    TeacherLoginSerializer
 )
 
 
@@ -31,6 +32,32 @@ class OwnerLoginView(APIView):
                 'user': user_serializer.data
             }, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class TeacherLoginView(APIView):
+    """講師専用ログインビュー"""
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        serializer = TeacherLoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            login(request, user)
+            user_serializer = UserSerializer(user)
+            return Response({
+                'message': '講師ログインに成功しました。',
+                'user': user_serializer.data
+            }, status=status.HTTP_200_OK)
+        
+        # エラーレスポンスを修正
+        errors = serializer.errors
+        if 'non_field_errors' in errors:
+            error_message = errors['non_field_errors'][0]
+        else:
+            error_message = 'ログインに失敗しました。'
+            
+        return Response({
+            'error': error_message
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 @method_decorator(csrf_exempt, name='dispatch')

@@ -46,6 +46,32 @@ class OwnerLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError('ユーザー名とパスワードを入力してください。')
         
         return data
+    
+class TeacherLoginSerializer(serializers.Serializer):
+    """講師専用ログイン用シリアライザー"""
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+    
+    def validate(self, data):
+        username = data.get('username')
+        password = data.get('password')
+        
+        if username and password:
+            user = authenticate(username=username, password=password)
+            if user:
+                if user.is_active:
+                    # 講師権限のチェック
+                    if not user.is_teacher:
+                        raise serializers.ValidationError('講師権限が必要です。')
+                    data['user'] = user
+                else:
+                    raise serializers.ValidationError('アカウントが無効です。')
+            else:
+                raise serializers.ValidationError('ユーザー名またはパスワードが正しくありません。')
+        else:
+            raise serializers.ValidationError('ユーザー名とパスワードを入力してください。')
+        
+        return data
 
 
 class OwnerProfileSerializer(serializers.ModelSerializer):

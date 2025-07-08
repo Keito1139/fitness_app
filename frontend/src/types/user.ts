@@ -1,3 +1,5 @@
+// frontend/src/types/user.ts
+
 export interface User {
   id: number;
   username: string;
@@ -28,4 +30,5 @@ export interface ApiError {
   username?: string[];
   password?: string[];
   detail?: string;
+  error?: string;
 }

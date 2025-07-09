@@ -82,14 +82,14 @@ function App(): React.JSX.Element {
             path="/login"
             element={
               user ? (
-                <Navigate to="/dashboard" />
+                <Navigate to="/dashboard/overview" />
               ) : (
                 <Login onLogin={handleLogin} />
               )
             }
           />
           <Route
-            path="/dashboard"
+            path="/dashboard/*"
             element={
               user ? (
                 <Dashboard user={user} onLogout={handleLogout} />
@@ -100,7 +100,7 @@ function App(): React.JSX.Element {
           />
           <Route
             path="/"
-            element={<Navigate to={user ? "/dashboard" : "/login"} />}
+            element={<Navigate to={user ? "/dashboard/overview" : "/login"} />}
           />
         </Routes>
       </div>

@@ -2,4 +2,4 @@
 
 # バックエンドでアプリを作るとき
 
-python manage.py startapp
+python manage.py startapp ~

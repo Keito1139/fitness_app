@@ -44,7 +44,9 @@ INSTALLED_APPS = [
     'django_filters',
 
     'account',
-    'school'
+    'school',
+    'config',
+    'shift',
 ]
 
 MIDDLEWARE = [

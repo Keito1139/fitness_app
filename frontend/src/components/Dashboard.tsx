@@ -74,7 +74,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
     },
     {
       id: "shifts",
-      name: "シフト管理",
+      name: "固定シフト管理",
       icon: Calendar,
       path: "/dashboard/shifts",
     },

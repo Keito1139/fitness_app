@@ -5,6 +5,7 @@ from django.contrib.auth import authenticate
 from .models import CustomUser, OwnerProfile, TeacherProfile
 from school.models import School
 from school.serializers import SchoolSerializer
+from config.serializers import PlaceSerializer
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -106,6 +107,7 @@ class TeacherListSerializer(serializers.ModelSerializer):
     )
     full_name = serializers.SerializerMethodField()
     schools_info = SchoolSerializer(source='schools', many=True, read_only=True)
+    place_info = PlaceSerializer(source='place', many=True, read_only=True)
     teacher_profile = serializers.SerializerMethodField()
     
     class Meta:
@@ -123,6 +125,8 @@ class TeacherListSerializer(serializers.ModelSerializer):
             'current_school_name',
             'schools',
             'schools_info',
+            'place',        
+            'place_info', 
             'teacher_profile',
             'date_joined',
         ]
@@ -154,6 +158,7 @@ class TeacherDetailSerializer(serializers.ModelSerializer):
     )
     full_name = serializers.SerializerMethodField()
     schools_info = SchoolSerializer(source='schools', many=True, read_only=True)
+    place_info = PlaceSerializer(source='place', many=True, read_only=True)
     teacher_profile = serializers.SerializerMethodField()
     
     class Meta:
@@ -172,6 +177,8 @@ class TeacherDetailSerializer(serializers.ModelSerializer):
             'current_school_name',
             'schools',
             'schools_info',
+            'place',
+            'place_info',
             'teacher_profile',
             'date_joined',
         ]
@@ -211,6 +218,7 @@ class TeacherCreateSerializer(serializers.ModelSerializer):
             'password_confirm',
             'current_school',
             'schools',
+            'place',
         ]
 
     def validate(self, attrs):
@@ -239,6 +247,7 @@ class TeacherCreateSerializer(serializers.ModelSerializer):
         # パスワードを取得して削除
         password = validated_data.pop('password')
         schools_data = validated_data.pop('schools', [])
+        places_data = validated_data.pop('place', [])
         
         # 講師フラグを設定
         validated_data['is_teacher'] = True
@@ -252,6 +261,9 @@ class TeacherCreateSerializer(serializers.ModelSerializer):
         # 関連する学校を設定
         if schools_data:
             user.schools.set(schools_data)
+
+        if places_data:
+            user.place.set(places_data)
         
         # 講師プロフィールを作成
         TeacherProfile.objects.create(user=user)
@@ -271,6 +283,7 @@ class TeacherUpdateSerializer(serializers.ModelSerializer):
             'is_active',
             'current_school',
             'schools',
+            'place',
         ]
 
     def validate_email(self, value):
@@ -283,6 +296,7 @@ class TeacherUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         """講師情報の更新"""
         schools_data = validated_data.pop('schools', None)
+        places_data = validated_data.pop('place', None) 
         
         # 基本情報を更新
         for attr, value in validated_data.items():
@@ -292,5 +306,8 @@ class TeacherUpdateSerializer(serializers.ModelSerializer):
         # 学校情報を更新
         if schools_data is not None:
             instance.schools.set(schools_data)
+
+        if places_data is not None:
+            instance.place.set(places_data)
         
         return instance

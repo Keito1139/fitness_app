@@ -1,5 +1,7 @@
 // frontend/src/types/teacher.ts
 
+import type { Place } from "./config";
+
 export interface School {
   id: number;
   name: string;
@@ -24,6 +26,8 @@ export interface Teacher {
   current_school_name: string | null;
   schools: number[];
   schools_info: School[];
+  place: number[];
+  place_info: Place[];
   teacher_profile: TeacherProfile | null;
   date_joined: string;
 }
@@ -78,6 +82,7 @@ export interface TeacherFormData {
   password_confirm: string;
   current_school: number | null;
   schools: number[];
+  place: number[];
   is_active?: boolean;
 }
 
@@ -88,6 +93,7 @@ export interface TeacherUpdateData {
   is_active: boolean;
   current_school: number | null;
   schools: number[];
+  place: number[];
 }
 
 export interface TeacherCreateResponse {

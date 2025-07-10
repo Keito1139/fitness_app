@@ -1,5 +1,7 @@
 // frontend/src/types/fixedShift.ts
 
+import type { Place, Day } from "./config";
+
 export interface FixedShift {
   id: number;
   day: number;
@@ -11,17 +13,6 @@ export interface FixedShift {
   teacher: number[];
   teacher_names: string[];
   description: string;
-}
-
-export interface Day {
-  id: number;
-  name: string;
-  order: number;
-}
-
-export interface Place {
-  id: number;
-  name: string;
 }
 
 export interface TimeSlot {

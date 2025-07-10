@@ -16,7 +16,6 @@ import {
   UserX,
   School,
   Mail,
-  Calendar,
 } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
 import teacherService from "../../services/teacherService";
@@ -359,7 +358,6 @@ const TeacherManagement: React.FC = () => {
                       {/* 登録日 */}
                       <div className="col-span-1">
                         <div className="flex items-center space-x-1 text-sm text-gray-600">
-                          <Calendar className="h-4 w-4" />
                           <span>{formatDate(teacher.date_joined)}</span>
                         </div>
                       </div>

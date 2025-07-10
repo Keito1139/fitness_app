@@ -85,12 +85,17 @@ class OwnerProfileSerializer(serializers.ModelSerializer):
 
 
 class TeacherProfileSerializer(serializers.ModelSerializer):
-    """教師プロフィール用シリアライザー"""
-    user = UserSerializer(read_only=True)
+    """講師の基本情報シリアライザー"""
+    full_name = serializers.SerializerMethodField()
     
     class Meta:
-        model = TeacherProfile
-        fields = ['user']
+        model = CustomUser
+        fields = ['id', 'username', 'first_name', 'last_name', 'full_name', 'email']
+    
+    def get_full_name(self, obj):
+        if obj.last_name and obj.first_name:
+            return f"{obj.last_name} {obj.first_name}"
+        return obj.username
 
 
 class TeacherListSerializer(serializers.ModelSerializer):

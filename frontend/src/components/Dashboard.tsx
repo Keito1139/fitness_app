@@ -10,6 +10,7 @@ import {
   Menu,
   X,
   Home,
+  Calendar,
 } from "lucide-react";
 import {
   Routes,
@@ -20,6 +21,7 @@ import {
 } from "react-router-dom";
 import type { User } from "../types/user";
 import TeacherManagement from "./teacher/TeacherManagement";
+import ShiftManagement from "./fixedShift/FixedShiftManagement";
 import ToastContainer from "./common/ToastContainer";
 import { ToastProvider } from "../contexts/ToastContext";
 import ConfirmModal from "./common/ConfirmModal";
@@ -69,6 +71,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       name: "設定",
       icon: Settings,
       path: "/dashboard/settings",
+    },
+    {
+      id: "shifts",
+      name: "シフト管理",
+      icon: Calendar,
+      path: "/dashboard/shifts",
     },
   ];
 
@@ -398,6 +406,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               />
               <Route path="/overview" element={<DashboardHome />} />
               <Route path="/teachers" element={<TeacherManagement />} />
+              <Route path="/shifts" element={<ShiftManagement user={user} />} />
               <Route
                 path="/schools"
                 element={<PlaceholderPage title="学校管理" icon={School} />}

@@ -3,6 +3,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from school.models import School
+from config.models import Place
 
 
 class CustomUser(AbstractUser):
@@ -15,6 +16,7 @@ class CustomUser(AbstractUser):
 
     # 必要に応じてAbstractUserのフィールドを上書き
     email = models.EmailField(unique=True, verbose_name="メールアドレス")
+    place = models.ManyToManyField(Place, related_name='teacher_profiles', verbose_name="指導可能場所", blank=True)
 
     class Meta:
         verbose_name = "カスタムユーザー"

@@ -20,7 +20,7 @@ from .serializers import (
     OwnerProfileSerializer, TeacherProfileSerializer,
     TeacherLoginSerializer, TeacherCreateSerializer,
     TeacherDetailSerializer, TeacherListSerializer,
-    TeacherUpdateSerializer
+    TeacherUpdateSerializer, AdminLoginSerializer
 )
 from permissions import IsOwnerOrAdmin
 from .filters import TeacherFilter
@@ -50,6 +50,38 @@ class OwnerLoginView(APIView):
         return Response({
             'error': error_message
         }, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class AdminLoginView(APIView):
+    """管理者専用ログインビュー"""
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        serializer = AdminLoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            login(request, user)
+            user_serializer = UserSerializer(user)
+            return Response({
+                'message': '管理者ログインに成功しました。',
+                'user': user_serializer.data,
+            }, status=status.HTTP_200_OK)
+
+        errors = serializer.errors
+        if 'non_field_errors' in errors:
+            error_message = errors['non_field_errors'][0]
+            # 管理者権限不足の場合は403を返す
+            if '管理者権限が必要です' in error_message:
+                return Response({
+                    'error': error_message
+                }, status=status.HTTP_403_FORBIDDEN)
+        else:
+            error_message = 'ログインに失敗しました。'
+            
+        return Response({
+            'error': error_message
+        }, status=status.HTTP_400_BAD_REQUEST)
+
     
 class TeacherLoginView(APIView):
     """講師専用ログインビュー"""
@@ -172,7 +204,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
         ).prefetch_related('schools')
         
         # オーナーは自分の学校の講師のみ表示
-        if self.request.user.is_owner and not self.request.user.is_admin:
+        if self.request.user.is_owner and not self.request.user.is_superuser:
             user_schools = self.request.user.schools.all()
             queryset = queryset.filter(schools__in=user_schools).distinct()
         
@@ -222,7 +254,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
         
         if serializer.is_valid():
             # オーナーの場合、自分の学校のみ設定可能
-            if request.user.is_owner and not request.user.is_admin:
+            if request.user.is_owner and not request.user.is_superuser:
                 user_schools = request.user.schools.all()
                 current_school = serializer.validated_data.get('current_school')
                 schools = serializer.validated_data.get('schools', [])
@@ -260,7 +292,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
         
         if serializer.is_valid():
             # オーナーの場合、自分の学校のみ設定可能
-            if request.user.is_owner and not request.user.is_admin:
+            if request.user.is_owner and not request.user.is_superuser:
                 user_schools = request.user.schools.all()
                 current_school = serializer.validated_data.get('current_school')
                 schools = serializer.validated_data.get('schools')
@@ -312,7 +344,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
         teacher = self.get_object()
         
         # オーナーの場合、自分の学校の講師のみ操作可能
-        if request.user.is_owner and not request.user.is_admin:
+        if request.user.is_owner and not request.user.is_superuser:
             user_schools = request.user.schools.all()
             if not teacher.schools.filter(id__in=user_schools).exists():
                 return Response(
@@ -342,7 +374,7 @@ class TeacherViewSet(viewsets.ModelViewSet):
         
         # 学校別統計
         school_stats = []
-        if request.user.is_admin:
+        if request.user.is_superuser:
             from school.models import School
             schools = School.objects.all()
         else:

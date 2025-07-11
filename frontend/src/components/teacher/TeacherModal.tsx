@@ -22,6 +22,7 @@ import type {
   TeacherUpdateData,
   ApiError,
 } from "../../types/teacher";
+import type { Place } from "../../types/config";
 
 interface TeacherModalProps {
   teacher?: Teacher | null;
@@ -43,10 +44,12 @@ const TeacherModal: React.FC<TeacherModalProps> = ({
     password_confirm: "",
     current_school: null,
     schools: [],
+    place: [],
     is_active: true,
   });
 
   const [schools, setSchools] = useState<SchoolType[]>([]);
+  const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
@@ -69,9 +72,40 @@ const TeacherModal: React.FC<TeacherModalProps> = ({
     }
   }, [showToast]);
 
+  // 指導場所一覧取得
+  const fetchPlaces = useCallback(
+    async (schoolIds?: number[]) => {
+      try {
+        if (!schoolIds || schoolIds.length === 0) {
+          setPlaces([]);
+          return;
+        }
+
+        // 複数の学校の場所を取得
+        const allPlaces: Place[] = [];
+        for (const schoolId of schoolIds) {
+          const schoolPlaces = await teacherService.getPlaces(schoolId);
+          allPlaces.push(...schoolPlaces);
+        }
+
+        // 重複を除去
+        const uniquePlaces = allPlaces.filter(
+          (place, index, self) =>
+            index === self.findIndex((p) => p.id === place.id)
+        );
+
+        setPlaces(uniquePlaces);
+      } catch (error) {
+        console.error("指導場所一覧取得エラー:", error);
+        showToast("指導場所一覧の取得に失敗しました", "error");
+        setPlaces([]);
+      }
+    },
+    [showToast]
+  );
+
   // useEffectを修正
   useEffect(() => {
-    // 学校一覧を取得（エラーが発生してもモーダルは閉じない）
     fetchSchools();
 
     if (teacher) {
@@ -84,8 +118,14 @@ const TeacherModal: React.FC<TeacherModalProps> = ({
         password_confirm: "",
         current_school: teacher.current_school,
         schools: teacher.schools,
+        place: teacher.place || [],
         is_active: teacher.is_active,
       });
+
+      // 講師の学校に基づいて指導場所を取得
+      if (teacher.schools && teacher.schools.length > 0) {
+        fetchPlaces(teacher.schools);
+      }
     }
 
     // 最初の入力フィールドにフォーカス
@@ -102,7 +142,7 @@ const TeacherModal: React.FC<TeacherModalProps> = ({
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [teacher, onClose, fetchSchools]); // fetchSchoolsを依存配列から削除
+  }, [teacher, onClose, fetchSchools, fetchPlaces]);
 
   // フォーム入力ハンドラー
   const handleInputChange = (
@@ -131,26 +171,53 @@ const TeacherModal: React.FC<TeacherModalProps> = ({
     }
   };
 
-  // 学校選択ハンドラー
+  // 学校選択時に指導場所も更新
   const handleSchoolChange = (schoolId: number, checked: boolean) => {
     setFormData((prev) => {
       const newSchools = checked
         ? [...prev.schools, schoolId]
         : prev.schools.filter((id) => id !== schoolId);
 
-      // 現在の学校が選択された学校に含まれていない場合はクリア
       const newCurrentSchool = newSchools.includes(prev.current_school || 0)
         ? prev.current_school
         : newSchools.length > 0
         ? newSchools[0]
         : null;
 
+      // 指導場所を更新（選択されていない学校の場所を除外）
+      const newPlaces = prev.place.filter((placeId) => {
+        const place = places.find((p) => p.id === placeId);
+        return place && newSchools.includes(place.school);
+      });
+
       return {
         ...prev,
         schools: newSchools,
         current_school: newCurrentSchool,
+        place: newPlaces,
       };
     });
+
+    // 学校選択に基づいて指導場所一覧を更新
+    const newSchools = checked
+      ? [...formData.schools, schoolId]
+      : formData.schools.filter((id) => id !== schoolId);
+
+    if (newSchools.length > 0) {
+      fetchPlaces(newSchools);
+    } else {
+      setPlaces([]);
+    }
+  };
+
+  // 指導場所選択ハンドラー
+  const handlePlaceChange = (placeId: number, checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      place: checked
+        ? [...prev.place, placeId]
+        : prev.place.filter((id) => id !== placeId),
+    }));
   };
 
   // バリデーション
@@ -221,6 +288,7 @@ const TeacherModal: React.FC<TeacherModalProps> = ({
           is_active: formData.is_active ?? true,
           current_school: formData.current_school,
           schools: formData.schools,
+          place: formData.place,
         };
 
         await teacherService.updateTeacher(teacher.id, updateData);
@@ -613,6 +681,54 @@ const TeacherModal: React.FC<TeacherModalProps> = ({
                       </div>
                     )}
                   </div>
+
+                  {/* 指導場所選択 */}
+                  {formData.schools.length > 0 && places.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        指導可能場所
+                      </label>
+                      <div className="border rounded-md p-3 bg-gray-50 max-h-40 overflow-y-auto">
+                        <div className="space-y-2">
+                          {places.map((place) => (
+                            <label
+                              key={place.id}
+                              className="flex items-center space-x-2 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={formData.place.includes(place.id)}
+                                onChange={(e) =>
+                                  handlePlaceChange(place.id, e.target.checked)
+                                }
+                                disabled={loading}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed"
+                              />
+                              <span className="text-sm text-gray-700">
+                                {place.name}
+                                <span className="text-xs text-gray-500 ml-1">
+                                  (
+                                  {
+                                    schools.find((s) => s.id === place.school)
+                                      ?.name
+                                  }
+                                  )
+                                </span>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      {errors.place && (
+                        <div className="mt-1 flex items-center space-x-1">
+                          <AlertCircle className="h-4 w-4 text-red-500" />
+                          <p className="text-sm text-red-600">
+                            {errors.place[0]}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* 現在の学校選択 */}
                   {formData.schools.length > 0 && (

@@ -42,11 +42,13 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'django_filters',
+    'openpyxl',
 
     'account',
     'school',
     'config',
     'shift',
+    'file',
 ]
 
 MIDDLEWARE = [

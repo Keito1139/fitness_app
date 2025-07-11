@@ -15,6 +15,8 @@ import type {
   School,
 } from "../types/teacher";
 
+import type { Place } from "../types/config";
+
 class TeacherService {
   /**
    * 講師一覧を取得
@@ -203,6 +205,35 @@ class TeacherService {
       }
     );
     return response.data;
+  }
+
+  /**
+   * 指導場所一覧を取得（講師作成・編集用）
+   */
+  async getPlaces(schoolId?: number): Promise<Place[]> {
+    try {
+      const params = schoolId ? `?school=${schoolId}` : "";
+      const response = await api.get<{ results?: Place[] } | Place[]>(
+        `/config/place/${params}`
+      );
+
+      // ページネーション形式かどうかを確認
+      if (
+        response.data &&
+        typeof response.data === "object" &&
+        "results" in response.data
+      ) {
+        return Array.isArray(response.data.results)
+          ? response.data.results
+          : [];
+      }
+
+      // 直接配列の場合
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      console.error("指導場所一覧取得エラー:", error);
+      return []; // エラー時も空配列を返す
+    }
   }
 }
 

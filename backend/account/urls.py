@@ -11,6 +11,7 @@ urlpatterns = [
     # 認証関連
     path('owner-login/', views.OwnerLoginView.as_view(), name='owner_login'),
     path('teacher-login/', views.TeacherLoginView.as_view(), name='teacher_login'),
+    path('admin-login/', views.AdminLoginView.as_view(), name='admin_login'),
     path('logout/', views.LogoutView.as_view(), name='logout'),
     path('csrf/', views.CSRFTokenView.as_view(), name='csrf_token'),
     

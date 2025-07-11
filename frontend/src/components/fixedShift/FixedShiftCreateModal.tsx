@@ -73,19 +73,22 @@ const ShiftCreateModal: React.FC<ShiftCreateModalProps> = ({
   const generateMinuteOptions = (hour: number) => {
     const options = [];
     let startMinute = 0;
-    let endMinute = 59;
+    let endMinute = 55; // 59 → 55に変更（5分刻みで最大55分）
 
     // 学校開始時間の時の場合
     if (schoolStartTime && hour === parseInt(schoolStartTime.split(":")[0])) {
-      startMinute = parseInt(schoolStartTime.split(":")[1]);
+      const schoolStartMinute = parseInt(schoolStartTime.split(":")[1]);
+      startMinute = Math.ceil(schoolStartMinute / 5) * 5; // 5分刻みに切り上げ
     }
 
     // 学校終了時間の時の場合
     if (schoolEndTime && hour === parseInt(schoolEndTime.split(":")[0])) {
-      endMinute = parseInt(schoolEndTime.split(":")[1]);
+      const schoolEndMinute = parseInt(schoolEndTime.split(":")[1]);
+      endMinute = Math.floor(schoolEndMinute / 5) * 5; // 5分刻みに切り下げ
     }
 
-    for (let minute = startMinute; minute <= endMinute; minute++) {
+    // 5分刻みで生成
+    for (let minute = startMinute; minute <= endMinute; minute += 5) {
       options.push(minute);
     }
     return options;
@@ -96,16 +99,65 @@ const ShiftCreateModal: React.FC<ShiftCreateModalProps> = ({
   // 初期時間設定
   useEffect(() => {
     if (isOpen) {
+      // 学校時間範囲内に調整
+      let adjustedStartHour = initialHour;
+      let adjustedStartMinute = Math.floor(initialMinute / 5) * 5; // 5分刻みに調整
+
+      if (schoolStartTime) {
+        const schoolStartHour = parseInt(schoolStartTime.split(":")[0]);
+        const schoolStartMinute = parseInt(schoolStartTime.split(":")[1]);
+
+        if (
+          adjustedStartHour < schoolStartHour ||
+          (adjustedStartHour === schoolStartHour &&
+            adjustedStartMinute < schoolStartMinute)
+        ) {
+          adjustedStartHour = schoolStartHour;
+          adjustedStartMinute = Math.ceil(schoolStartMinute / 5) * 5;
+        }
+      }
+
+      // 終了時間は開始時間+1時間（または学校終了時間まで）
+      let adjustedEndHour = adjustedStartHour + 1;
+      let adjustedEndMinute = adjustedStartMinute;
+
+      if (schoolEndTime) {
+        const schoolEndHour = parseInt(schoolEndTime.split(":")[0]);
+        const schoolEndMinute = parseInt(schoolEndTime.split(":")[1]);
+
+        // 終了時間が学校終了時間を超える場合
+        if (
+          adjustedEndHour > schoolEndHour ||
+          (adjustedEndHour === schoolEndHour &&
+            adjustedEndMinute > schoolEndMinute)
+        ) {
+          adjustedEndHour = schoolEndHour;
+          adjustedEndMinute = Math.floor(schoolEndMinute / 5) * 5;
+
+          // 開始時間と終了時間が同じになってしまう場合は開始時間を調整
+          if (
+            adjustedStartHour === adjustedEndHour &&
+            adjustedStartMinute >= adjustedEndMinute
+          ) {
+            adjustedStartHour = Math.max(
+              adjustedStartHour - 1,
+              parseInt(schoolStartTime?.split(":")[0] || "9")
+            );
+            adjustedStartMinute = 0;
+          }
+        }
+      }
+
       setFormData({
-        startHour: initialHour,
-        startMinute: initialMinute,
-        endHour: initialHour + 1,
-        endMinute: initialMinute,
+        startHour: adjustedStartHour,
+        startMinute: adjustedStartMinute,
+        endHour: adjustedEndHour,
+        endMinute: adjustedEndMinute,
         teacherIds: [],
         description: "",
       });
     }
-  }, [isOpen, initialHour, initialMinute]);
+  }, [isOpen, initialHour, initialMinute, schoolStartTime, schoolEndTime]);
 
   // 利用可能な講師を取得
   const loadAvailableTeachers = useCallback(async () => {

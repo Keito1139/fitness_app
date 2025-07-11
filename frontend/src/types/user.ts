@@ -8,7 +8,7 @@ export interface User {
   last_name: string;
   is_owner: boolean;
   is_teacher: boolean;
-  is_admin: boolean;
+  is_superuser: boolean;
   schools: number[];
   current_school: number | null;
   current_school_name: string | null;

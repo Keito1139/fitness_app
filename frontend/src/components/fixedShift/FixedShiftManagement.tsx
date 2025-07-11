@@ -5,28 +5,16 @@ import { Calendar, AlertTriangle, Copy, BarChart3 } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
 import { shiftApi } from "../../services/fixedShiftService";
 import type { User } from "../../types/user";
+import type { ConflictResult } from "../../types/fixedShift";
 import FixedShiftScheduleGrid from "./FixedShiftScheduleGrid";
 
 interface ShiftManagementProps {
   user: User;
 }
 
-interface Conflict {
-  teacher_name: string;
-  day_name: string;
-  conflicting_shifts: Array<{
-    // 変更
-    shift_id: number;
-    start_time: string; // 変更
-    end_time: string; // 変更
-    place_name: string;
-    description: string;
-  }>;
-}
-
 const ShiftManagement: React.FC<ShiftManagementProps> = ({ user }) => {
   const [selectedSchoolId, setSelectedSchoolId] = useState<number | null>(null);
-  const [conflicts, setConflicts] = useState<Conflict[]>([]);
+  const [conflicts, setConflicts] = useState<ConflictResult["conflicts"]>([]);
   const [showConflicts, setShowConflicts] = useState(false);
   const [loadingConflicts, setLoadingConflicts] = useState(false);
   const [showCopyModal, setShowCopyModal] = useState(false);

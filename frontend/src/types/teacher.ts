@@ -21,7 +21,7 @@ export interface Teacher {
   full_name: string;
   is_active: boolean;
   is_teacher: boolean;
-  is_admin: boolean;
+  is_superuser: boolean;
   current_school: number | null;
   current_school_name: string | null;
   schools: number[];

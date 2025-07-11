@@ -2,6 +2,18 @@
 
 import type { Place, Day } from "./config";
 
+export interface Teacher {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  email: string;
+  role_display: string;
+  is_teacher: boolean;
+  is_owner: boolean;
+}
+
 export interface FixedShift {
   id: number;
   day: number;
@@ -10,9 +22,10 @@ export interface FixedShift {
   end_time: string;
   place: number;
   place_name: string;
-  teacher: number[];
+  teacher: Teacher[]; // number[] から Teacher[] に変更
   teacher_names: string[];
   description: string;
+  duration_minutes: number; // 追加（コンポーネントで使用されている）
 }
 
 export interface TimeSlot {
@@ -53,6 +66,37 @@ export interface FixedShiftGrid {
   school_end_time?: string; // 学校の終了時間
 }
 
+export interface AvailableTeacher {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  email: string;
+  is_available: boolean;
+  current_shifts: Array<{
+    place_name: string;
+    description: string;
+  }>;
+  can_teach_at_place: boolean;
+  available_places: Array<{
+    id: number;
+    name: string;
+  }>;
+  role_display: string;
+  is_teacher: boolean;
+  is_owner: boolean;
+}
+
+export interface CreateFixedShiftRequest {
+  day: number;
+  start_time: string; // time から start_time に変更
+  end_time: string; // 追加
+  teacher_ids: number[];
+  place: number;
+  description?: string;
+}
+
 export interface ShiftFormData {
   day: number;
   start_time: string;
@@ -60,6 +104,22 @@ export interface ShiftFormData {
   place: number;
   teacher: number[];
   description: string;
+}
+
+export interface ShiftConflict {
+  teacher_name: string;
+  day_name: string;
+  conflicting_shifts: Array<{
+    shift_id: number;
+    start_time: string;
+    end_time: string;
+    place_name: string;
+    description: string;
+  }>;
+}
+
+export interface BulkFixedShiftRequest {
+  shifts: CreateFixedShiftRequest[];
 }
 
 export interface ConflictResult {

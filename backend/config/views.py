@@ -18,7 +18,7 @@ class PlaceViewSet(viewsets.ReadOnlyModelViewSet):
         queryset = Place.objects.all()
         
         # オーナーは自分の学校の指導場所のみ
-        if self.request.user.is_owner and not self.request.user.is_admin:
+        if self.request.user.is_owner and not self.request.user.is_superuser:
             user_schools = self.request.user.schools.all()
             queryset = queryset.filter(school__in=user_schools)
         

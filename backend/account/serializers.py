@@ -17,62 +17,80 @@ class UserSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
-            'is_owner', 'is_teacher', 'is_admin', 'schools', 
+            'is_owner', 'is_teacher', 'is_superuser', 'schools', 
             'current_school', 'current_school_name', 'date_joined'
         ]
-        read_only_fields = ['id', 'date_joined']
+        read_only_fields = ['id', 'date_joined', 'is_superuser']
 
 
-class OwnerLoginSerializer(serializers.Serializer):
-    """オーナー専用ログイン用シリアライザー"""
+class BaseLoginSerializer(serializers.Serializer):
+    """ログイン用の基底シリアライザー"""
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
+    
+    def validate_credentials(self, username, password):
+        """認証情報の基本検証"""
+        if not username or not password:
+            raise serializers.ValidationError('ユーザー名とパスワードを入力してください。')
+        
+        user = authenticate(username=username, password=password)
+        if not user:
+            raise serializers.ValidationError('ユーザー名またはパスワードが正しくありません。')
+        
+        if not user.is_active:
+            raise serializers.ValidationError('アカウントが無効です。')
+        
+        return user
+
+
+class OwnerLoginSerializer(BaseLoginSerializer):
+    """オーナー専用ログイン用シリアライザー"""
     
     def validate(self, data):
         username = data.get('username')
         password = data.get('password')
         
-        if username and password:
-            user = authenticate(username=username, password=password)
-            if user:
-                if user.is_active:
-                    # オーナー権限のチェック
-                    if not user.is_owner:
-                        raise serializers.ValidationError('オーナー権限が必要です。')
-                    data['user'] = user
-                else:
-                    raise serializers.ValidationError('アカウントが無効です。')
-            else:
-                raise serializers.ValidationError('ユーザー名またはパスワードが正しくありません。')
-        else:
-            raise serializers.ValidationError('ユーザー名とパスワードを入力してください。')
+        user = self.validate_credentials(username, password)
         
+        # オーナー権限のチェック
+        if not user.is_owner:
+            raise serializers.ValidationError('オーナー権限が必要です。')
+        
+        data['user'] = user
+        return data
+
+
+class AdminLoginSerializer(BaseLoginSerializer):
+    """管理者専用ログイン用シリアライザー"""
+    
+    def validate(self, data):
+        username = data.get('username')
+        password = data.get('password')
+        
+        user = self.validate_credentials(username, password)
+        
+        # 管理者権限のチェック（is_superuser または is_admin）
+        if not user.is_superuser:
+            raise serializers.ValidationError('管理者権限が必要です。')
+        
+        data['user'] = user
         return data
     
-class TeacherLoginSerializer(serializers.Serializer):
+
+class TeacherLoginSerializer(BaseLoginSerializer):
     """講師専用ログイン用シリアライザー"""
-    username = serializers.CharField()
-    password = serializers.CharField(write_only=True)
     
     def validate(self, data):
         username = data.get('username')
         password = data.get('password')
         
-        if username and password:
-            user = authenticate(username=username, password=password)
-            if user:
-                if user.is_active:
-                    # 講師権限のチェック
-                    if not user.is_teacher:
-                        raise serializers.ValidationError('講師権限が必要です。')
-                    data['user'] = user
-                else:
-                    raise serializers.ValidationError('アカウントが無効です。')
-            else:
-                raise serializers.ValidationError('ユーザー名またはパスワードが正しくありません。')
-        else:
-            raise serializers.ValidationError('ユーザー名とパスワードを入力してください。')
+        user = self.validate_credentials(username, password)
         
+        # 講師権限のチェック
+        if not user.is_teacher:
+            raise serializers.ValidationError('講師権限が必要です。')
+        
+        data['user'] = user
         return data
 
 
@@ -172,7 +190,7 @@ class TeacherDetailSerializer(serializers.ModelSerializer):
             'full_name',
             'is_active',
             'is_teacher',
-            'is_admin',
+            'is_superuser',
             'current_school',
             'current_school_name',
             'schools',

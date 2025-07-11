@@ -19,7 +19,7 @@ class SchoolViewSet(viewsets.ModelViewSet):
         """
         オーナーは自分の学校のみ、管理者は全ての学校を表示
         """
-        if self.request.user.is_admin:
+        if self.request.user.is_superuser:
             return School.objects.all()
         elif self.request.user.is_owner:
             return self.request.user.schools.all()

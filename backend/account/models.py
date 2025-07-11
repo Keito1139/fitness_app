@@ -10,7 +10,6 @@ class CustomUser(AbstractUser):
     # 独自のフィールドのみ追加
     is_owner = models.BooleanField(default=False, verbose_name="オーナー権限")
     is_teacher = models.BooleanField(default=False, verbose_name="教師権限")
-    is_admin = models.BooleanField(default=False, verbose_name="管理者権限")
     schools = models.ManyToManyField(School, blank=True)
     current_school = models.ForeignKey(School, blank=True, null=True, on_delete=models.SET_NULL, related_name='users')
 

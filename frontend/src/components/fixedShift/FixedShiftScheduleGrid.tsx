@@ -1,6 +1,12 @@
 // frontend/src/components/fixedShift/FixedShiftScheduleGrid.tsx
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import {
   Plus,
   MapPin,
@@ -8,18 +14,18 @@ import {
   Edit2,
   Trash2,
   AlertTriangle,
+  Clock,
 } from "lucide-react";
 import { shiftApi } from "../../services/fixedShiftService";
 import { useToast } from "../../contexts/ToastContext";
 import type {
   FixedShiftGrid,
   FixedShift,
-  Day,
-  Place,
   TimeSlot,
   ShiftPosition,
   DaySchedule,
 } from "../../types/fixedShift";
+import type { Day, Place } from "../../types/config";
 import ShiftCreateModal from "./FixedShiftCreateModal";
 import ShiftEditModal from "./FixedShiftEditModal";
 import ConfirmModal from "../common/ConfirmModal";
@@ -42,6 +48,9 @@ const FixedShiftScheduleGrid: React.FC<FixedShiftScheduleGridProps> = ({
     hour: number;
     minute: number;
   } | null>(null);
+
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
 
   const { showSuccess, showError } = useToast();
 
@@ -71,25 +80,54 @@ const FixedShiftScheduleGrid: React.FC<FixedShiftScheduleGridProps> = ({
   }, [loadGridData]);
 
   // 時間スロットの生成
-  const generateTimeSlots = useCallback(
-    (startHour: number, endHour: number): TimeSlot[] => {
-      const slots: TimeSlot[] = [];
-      const totalMinutes = (endHour - startHour) * 60;
+  const generateTimeSlots = useCallback((): TimeSlot[] => {
+    if (!gridData) return [];
 
-      for (let hour = startHour; hour <= endHour; hour++) {
-        const position = (((hour - startHour) * 60) / totalMinutes) * 100;
-        slots.push({
-          hour,
-          minute: 0,
-          displayTime: `${hour.toString().padStart(2, "0")}:00`,
-          position,
-        });
+    const slots: TimeSlot[] = [];
+
+    // 学校の始業・終業時間を使用（バックエンドから取得した値）
+    let startHour = gridData.start_hour;
+    let endHour = gridData.end_hour;
+
+    // school_start_time と school_end_time がある場合はそれを優先
+    if (gridData.school_start_time && gridData.school_end_time) {
+      startHour = parseInt(gridData.school_start_time.split(":")[0]);
+      endHour = parseInt(gridData.school_end_time.split(":")[0]);
+
+      // 終業時間が分まで指定されている場合、その時間まで表示
+      const endMinute = parseInt(gridData.school_end_time.split(":")[1]);
+      if (endMinute > 0) {
+        endHour += 1;
       }
+    }
 
-      return slots;
-    },
-    []
-  );
+    const totalMinutes = (endHour - startHour) * 60;
+
+    for (let hour = startHour; hour <= endHour; hour++) {
+      const position = (((hour - startHour) * 60) / totalMinutes) * 100;
+      slots.push({
+        hour,
+        minute: 0,
+        displayTime: `${hour.toString().padStart(2, "0")}:00`,
+        position,
+      });
+    }
+
+    return slots;
+  }, [gridData]);
+
+  // スクロール同期処理
+  const handleHeaderScroll = useCallback(() => {
+    if (headerScrollRef.current && bodyScrollRef.current) {
+      bodyScrollRef.current.scrollLeft = headerScrollRef.current.scrollLeft;
+    }
+  }, []);
+
+  const handleBodyScroll = useCallback(() => {
+    if (headerScrollRef.current && bodyScrollRef.current) {
+      headerScrollRef.current.scrollLeft = bodyScrollRef.current.scrollLeft;
+    }
+  }, []);
 
   // シフトの位置計算
   const calculateShiftPosition = useCallback(
@@ -222,6 +260,7 @@ const FixedShiftScheduleGrid: React.FC<FixedShiftScheduleGridProps> = ({
     },
     [adjustOverlappingShifts]
   );
+
   const daySchedules = useMemo((): DaySchedule[] => {
     if (!gridData || !selectedDay) return [];
 
@@ -229,7 +268,7 @@ const FixedShiftScheduleGrid: React.FC<FixedShiftScheduleGridProps> = ({
       day: selectedDay,
       places: gridData.places,
       shifts: gridData.shifts.filter((shift) => shift.day === selectedDay.id),
-      timeSlots: generateTimeSlots(gridData.start_hour, gridData.end_hour),
+      timeSlots: generateTimeSlots(), // パラメータを削除
     };
 
     return [schedule];
@@ -242,17 +281,44 @@ const FixedShiftScheduleGrid: React.FC<FixedShiftScheduleGridProps> = ({
 
       const rect = containerRef.getBoundingClientRect();
       const clickY = event.clientY - rect.top;
-      const clickRatio = clickY / rect.height;
+      const clickRatio = Math.max(0, Math.min(1, clickY / rect.height)); // 0-1の範囲に制限
 
-      const totalHours = gridData.end_hour - gridData.start_hour;
-      const clickHour = gridData.start_hour + clickRatio * totalHours;
-      const hour = Math.floor(clickHour);
-      const minute = Math.floor((clickHour - hour) * 60);
+      // 学校の時間範囲を取得
+      let startHour = gridData.start_hour;
+      let endHour = gridData.end_hour;
+
+      if (gridData.school_start_time && gridData.school_end_time) {
+        startHour = parseInt(gridData.school_start_time.split(":")[0]);
+        endHour = parseInt(gridData.school_end_time.split(":")[0]);
+        const endMinute = parseInt(gridData.school_end_time.split(":")[1]);
+        if (endMinute > 0) {
+          endHour += 1;
+        }
+      }
+
+      const totalHours = endHour - startHour;
+      const clickHour = startHour + clickRatio * totalHours;
+      let hour = Math.floor(clickHour);
+      let minute = Math.floor((clickHour - hour) * 60);
+
+      // 時間と分の範囲を制限
+      hour = Math.max(startHour, Math.min(endHour - 1, hour)); // 最大でもendHour-1
+      minute = Math.max(0, Math.min(55, Math.round(minute / 5) * 5)); // 5分刻みで0-55分
+
+      // 最終時刻（学校終了時間）の場合は1時間前に調整
+      if (gridData.school_end_time) {
+        const schoolEndHour = parseInt(gridData.school_end_time.split(":")[0]);
+
+        if (hour >= schoolEndHour) {
+          hour = schoolEndHour - 1;
+          minute = Math.min(minute, 55);
+        }
+      }
 
       setCreatePosition({
         place_id: place.id,
         hour,
-        minute: Math.round(minute / 15) * 15, // 15分単位に丸める
+        minute,
       });
       setShowCreateModal(true);
     },
@@ -342,50 +408,68 @@ const FixedShiftScheduleGrid: React.FC<FixedShiftScheduleGridProps> = ({
             <h3 className="font-medium text-gray-900">{schedule.day.name}</h3>
           </div>
 
-          <div className="overflow-x-auto">
+          <div>
             <div className="min-w-full">
               {/* ヘッダー */}
               <div className="flex border-b border-gray-200">
-                {schedule.places.map((place) => {
-                  const placeShifts = schedule.shifts.filter(
-                    (shift) => shift.place === place.id
-                  );
-                  const maxOverlap = getMaxOverlapForPlace(
-                    placeShifts,
-                    gridData.start_hour,
-                    gridData.end_hour
-                  );
-                  const placeWidth = maxOverlap > 1 ? 200 : 160; // 重複時のみ少し拡張
+                {/* 時間軸のヘッダー部分 */}
+                <div
+                  className="w-16 bg-gray-100 border-r border-gray-200 flex items-center justify-center flex-shrink-0 sticky left-0 z-10"
+                  style={{ height: "48px" }}
+                >
+                  <Clock className="h-4 w-4 text-gray-600" />
+                </div>
 
-                  return (
-                    <div
-                      key={place.id}
-                      className="p-3 bg-gray-50 border-r last:border-r-0 border-gray-200"
-                      style={{
-                        minWidth: `${placeWidth}px`,
-                        width: `${placeWidth}px`,
-                      }}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <MapPin className="h-4 w-4 text-gray-500" />
-                        <span className="font-medium text-gray-900 text-sm">
-                          {place.name}
-                        </span>
-                        {maxOverlap > 1 && (
-                          <span className="text-xs text-orange-600 bg-orange-100 px-1 rounded">
-                            重複
+                <div
+                  className="flex overflow-x-auto"
+                  ref={headerScrollRef}
+                  onScroll={handleHeaderScroll}
+                >
+                  {schedule.places.map((place) => {
+                    const placeShifts = schedule.shifts.filter(
+                      (shift) => shift.place === place.id
+                    );
+                    const maxOverlap = getMaxOverlapForPlace(
+                      placeShifts,
+                      gridData.start_hour,
+                      gridData.end_hour
+                    );
+                    const placeWidth = maxOverlap > 1 ? 200 : 160;
+
+                    return (
+                      <div
+                        key={place.id}
+                        className="p-3 bg-gray-50 border-r last:border-r-0 border-gray-200"
+                        style={{
+                          minWidth: `${placeWidth}px`,
+                          width: `${placeWidth}px`,
+                          height: "48px", // 時間軸ヘッダーと同じ高さに調整
+                        }}
+                      >
+                        <div className="flex items-center space-x-1 h-full">
+                          <MapPin className="h-4 w-4 text-gray-500" />
+                          <span className="font-medium text-gray-900 text-sm">
+                            {place.name}
                           </span>
-                        )}
+                          {maxOverlap > 1 && (
+                            <span className="text-xs text-orange-600 bg-orange-100 px-1 rounded">
+                              重複
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
 
               {/* メイングリッド */}
-              <div className="flex">
+              <div className="flex h-[600px]">
+                {" "}
+                {/* 固定高さを設定 */}
                 {/* 時間軸 */}
-                <div className="w-16 relative bg-gray-50 border-r border-gray-200 min-h-[800px]">
+                <div className="w-16 relative bg-gray-50 border-r border-gray-200 flex-shrink-0 sticky left-0 z-10">
+                  {/* 時間スロット */}
                   {schedule.timeSlots.map((slot) => (
                     <div
                       key={`${slot.hour}-${slot.minute}`}
@@ -400,174 +484,180 @@ const FixedShiftScheduleGrid: React.FC<FixedShiftScheduleGridProps> = ({
                     </div>
                   ))}
                 </div>
-
                 {/* 場所別グリッド */}
-                {schedule.places.map((place) => {
-                  const placeShifts = schedule.shifts.filter(
-                    (shift) => shift.place === place.id
-                  );
-                  const maxOverlap = getMaxOverlapForPlace(
-                    placeShifts,
-                    gridData.start_hour,
-                    gridData.end_hour
-                  );
-                  const placeWidth = maxOverlap > 1 ? 200 : 160; // 重複時のみ少し拡張
+                <div
+                  className="flex overflow-x-auto flex-1 overflow-y-auto"
+                  ref={bodyScrollRef}
+                  onScroll={handleBodyScroll}
+                >
+                  {schedule.places.map((place) => {
+                    const placeShifts = schedule.shifts.filter(
+                      (shift) => shift.place === place.id
+                    );
+                    const maxOverlap = getMaxOverlapForPlace(
+                      placeShifts,
+                      gridData.start_hour,
+                      gridData.end_hour
+                    );
+                    const placeWidth = maxOverlap > 1 ? 200 : 160; // 重複時のみ少し拡張
 
-                  return (
-                    <div
-                      key={place.id}
-                      className="relative border-r last:border-r-0 border-gray-200 min-h-[800px] cursor-pointer hover:bg-gray-50"
-                      style={{
-                        minWidth: `${placeWidth}px`,
-                        width: `${placeWidth}px`,
-                      }}
-                      onClick={(e) => {
-                        const container = e.currentTarget;
-                        handleGridClick(e, place, container);
-                      }}
-                    >
-                      {/* 時間グリッドライン */}
-                      {schedule.timeSlots.map((slot) => (
-                        <div
-                          key={`${place.id}-${slot.hour}-${slot.minute}`}
-                          className="absolute w-full border-t border-gray-100"
-                          style={{ top: `${slot.position}%` }}
-                        />
-                      ))}
+                    return (
+                      <div
+                        key={place.id}
+                        className="relative border-r last:border-r-0 border-gray-200 h-full cursor-pointer hover:bg-gray-50"
+                        style={{
+                          minWidth: `${placeWidth}px`,
+                          width: `${placeWidth}px`,
+                          minHeight: "800px",
+                        }}
+                        onClick={(e) => {
+                          const container = e.currentTarget;
+                          handleGridClick(e, place, container);
+                        }}
+                      >
+                        {/* 時間グリッドライン */}
+                        {schedule.timeSlots.map((slot) => (
+                          <div
+                            key={`${place.id}-${slot.hour}-${slot.minute}`}
+                            className="absolute w-full border-t border-gray-100"
+                            style={{ top: `${slot.position}%` }}
+                          />
+                        ))}
 
-                      {/* シフトブロック */}
-                      {(() => {
-                        const adjustedPositions = adjustOverlappingShifts(
-                          placeShifts,
-                          gridData.start_hour,
-                          gridData.end_hour
-                        );
+                        {/* シフトブロック */}
+                        {(() => {
+                          const adjustedPositions = adjustOverlappingShifts(
+                            placeShifts,
+                            gridData.start_hour,
+                            gridData.end_hour
+                          );
 
-                        return adjustedPositions.map((position) => {
-                          return (
-                            <div
-                              key={position.shift.id}
-                              className={`absolute border rounded-md p-1 cursor-pointer hover:bg-opacity-80 transition-colors group ${
-                                position.hasConflict
-                                  ? "bg-red-100 border-red-400 animate-pulse"
-                                  : position.isOverlapped
-                                  ? "bg-blue-50 border-blue-300"
-                                  : "bg-blue-100 border-blue-300"
-                              }`}
-                              style={{
-                                top: `${position.top}%`,
-                                height: `${position.height}%`,
-                                left: `${position.leftOffset || 1}%`,
-                                width: `${position.width || 98}%`,
-                                zIndex: position.hasConflict
-                                  ? 20
-                                  : position.column !== undefined
-                                  ? 10 + position.column
-                                  : 1,
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingShift(position.shift);
-                              }}
-                            >
-                              <div className="h-full flex flex-col justify-between">
-                                <div className="space-y-0.5">
-                                  <div
-                                    className={`text-xs font-medium ${
-                                      position.hasConflict
-                                        ? "text-red-900"
-                                        : "text-blue-900"
-                                    }`}
-                                  >
-                                    {position.shift.start_time.slice(0, 5)} -{" "}
-                                    {position.shift.end_time.slice(0, 5)}
+                          return adjustedPositions.map((position) => {
+                            return (
+                              <div
+                                key={position.shift.id}
+                                className={`absolute border rounded-md p-1 cursor-pointer hover:bg-opacity-80 transition-colors group ${
+                                  position.hasConflict
+                                    ? "bg-red-100 border-red-400 animate-pulse"
+                                    : position.isOverlapped
+                                    ? "bg-blue-50 border-blue-300"
+                                    : "bg-blue-100 border-blue-300"
+                                }`}
+                                style={{
+                                  top: `${position.top}%`,
+                                  height: `${position.height}%`,
+                                  left: `${position.leftOffset || 1}%`,
+                                  width: `${position.width || 98}%`,
+                                  zIndex: position.hasConflict
+                                    ? 20
+                                    : position.column !== undefined
+                                    ? 10 + position.column
+                                    : 1,
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingShift(position.shift);
+                                }}
+                              >
+                                <div className="h-full flex flex-col justify-between">
+                                  <div className="space-y-0.5">
+                                    <div
+                                      className={`text-xs font-medium ${
+                                        position.hasConflict
+                                          ? "text-red-900"
+                                          : "text-blue-900"
+                                      }`}
+                                    >
+                                      {position.shift.start_time.slice(0, 5)} -{" "}
+                                      {position.shift.end_time.slice(0, 5)}
+                                    </div>
+                                    {position.shift.teacher.length > 0 && (
+                                      <div className="flex items-center space-x-1">
+                                        <Users
+                                          className={`h-2.5 w-2.5 ${
+                                            position.hasConflict
+                                              ? "text-red-700"
+                                              : "text-blue-700"
+                                          }`}
+                                        />
+                                        <span
+                                          className={`text-xs ${
+                                            position.hasConflict
+                                              ? "text-red-700"
+                                              : "text-blue-700"
+                                          }`}
+                                        >
+                                          {position.shift.teacher.length}名
+                                        </span>
+                                      </div>
+                                    )}
+                                    {position.shift.description &&
+                                      position.height > 8 && (
+                                        <div
+                                          className={`text-xs truncate ${
+                                            position.hasConflict
+                                              ? "text-red-800"
+                                              : "text-blue-800"
+                                          }`}
+                                        >
+                                          {position.shift.description}
+                                        </div>
+                                      )}
+                                    {/* 競合警告 */}
+                                    {position.hasConflict && (
+                                      <div className="text-[9px] text-red-600 font-bold">
+                                        競合あり
+                                      </div>
+                                    )}
+                                    {/* 重複表示時の列番号 */}
+                                    {position.column !== undefined &&
+                                      position.totalColumns &&
+                                      position.totalColumns > 1 &&
+                                      !position.hasConflict && (
+                                        <div className="text-[9px] text-blue-600 font-bold">
+                                          {position.column + 1}/
+                                          {position.totalColumns}
+                                        </div>
+                                      )}
                                   </div>
-                                  {position.shift.teacher.length > 0 && (
-                                    <div className="flex items-center space-x-1">
-                                      <Users
-                                        className={`h-2.5 w-2.5 ${
-                                          position.hasConflict
-                                            ? "text-red-700"
-                                            : "text-blue-700"
-                                        }`}
-                                      />
-                                      <span
-                                        className={`text-xs ${
-                                          position.hasConflict
-                                            ? "text-red-700"
-                                            : "text-blue-700"
-                                        }`}
-                                      >
-                                        {position.shift.teacher.length}名
-                                      </span>
-                                    </div>
-                                  )}
-                                  {position.shift.description &&
-                                    position.height > 8 && (
-                                      <div
-                                        className={`text-xs truncate ${
-                                          position.hasConflict
-                                            ? "text-red-800"
-                                            : "text-blue-800"
-                                        }`}
-                                      >
-                                        {position.shift.description}
-                                      </div>
-                                    )}
-                                  {/* 競合警告 */}
-                                  {position.hasConflict && (
-                                    <div className="text-[9px] text-red-600 font-bold">
-                                      競合あり
-                                    </div>
-                                  )}
-                                  {/* 重複表示時の列番号 */}
-                                  {position.column !== undefined &&
-                                    position.totalColumns &&
-                                    position.totalColumns > 1 &&
-                                    !position.hasConflict && (
-                                      <div className="text-[9px] text-blue-600 font-bold">
-                                        {position.column + 1}/
-                                        {position.totalColumns}
-                                      </div>
-                                    )}
-                                </div>
 
-                                {/* ホバー時のアクション */}
-                                <div className="opacity-0 group-hover:opacity-100 flex space-x-1 mt-0.5">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingShift(position.shift);
-                                    }}
-                                    className="p-0.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                                  >
-                                    <Edit2 className="h-2.5 w-2.5" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setDeletingShift(position.shift);
-                                    }}
-                                    className="p-0.5 bg-red-600 text-white rounded text-xs hover:bg-red-700"
-                                  >
-                                    <Trash2 className="h-2.5 w-2.5" />
-                                  </button>
+                                  {/* ホバー時のアクション */}
+                                  <div className="opacity-0 group-hover:opacity-100 flex space-x-1 mt-0.5">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingShift(position.shift);
+                                      }}
+                                      className="p-0.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                                    >
+                                      <Edit2 className="h-2.5 w-2.5" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDeletingShift(position.shift);
+                                      }}
+                                      className="p-0.5 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+                                    >
+                                      <Trash2 className="h-2.5 w-2.5" />
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        });
-                      })()}
+                            );
+                          });
+                        })()}
 
-                      {/* 空の場所にプラスアイコン */}
-                      {placeShifts.length === 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Plus className="h-6 w-6 text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        {/* 空の場所にプラスアイコン */}
+                        {placeShifts.length === 0 && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <Plus className="h-6 w-6 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>

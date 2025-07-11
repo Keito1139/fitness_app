@@ -26,8 +26,8 @@ class Command(BaseCommand):
                 username='superuser',
                 email='superuser@example.com',
                 password='detteiu0113',
-                first_name='管理者',
-                last_name='太郎'
+                first_name='太郎',
+                last_name='管理者'
             )
             self.stdout.write(self.style.SUCCESS('スーパーユーザーを作成しました'))
         else:

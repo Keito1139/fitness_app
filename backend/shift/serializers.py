@@ -163,7 +163,7 @@ class AvailableTeacherSerializer(serializers.ModelSerializer):
             roles.append("オーナー")
         if obj.is_teacher:
             roles.append("講師")
-        if obj.is_admin:
+        if obj.is_superuser:
             roles.append("管理者")
         return " / ".join(roles) if roles else "一般"
     

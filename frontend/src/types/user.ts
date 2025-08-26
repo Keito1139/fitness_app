@@ -1,3 +1,5 @@
+// frontend/src/types/user.ts
+
 export interface User {
   id: number;
   username: string;
@@ -6,7 +8,7 @@ export interface User {
   last_name: string;
   is_owner: boolean;
   is_teacher: boolean;
-  is_admin: boolean;
+  is_superuser: boolean;
   schools: number[];
   current_school: number | null;
   current_school_name: string | null;
@@ -28,4 +30,5 @@ export interface ApiError {
   username?: string[];
   password?: string[];
   detail?: string;
+  error?: string;
 }

@@ -3,18 +3,19 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from school.models import School
+from config.models import Place
 
 
 class CustomUser(AbstractUser):
     # 独自のフィールドのみ追加
     is_owner = models.BooleanField(default=False, verbose_name="オーナー権限")
     is_teacher = models.BooleanField(default=False, verbose_name="教師権限")
-    is_admin = models.BooleanField(default=False, verbose_name="管理者権限")
     schools = models.ManyToManyField(School, blank=True)
     current_school = models.ForeignKey(School, blank=True, null=True, on_delete=models.SET_NULL, related_name='users')
 
     # 必要に応じてAbstractUserのフィールドを上書き
     email = models.EmailField(unique=True, verbose_name="メールアドレス")
+    place = models.ManyToManyField(Place, related_name='teacher_profiles', verbose_name="指導可能場所", blank=True)
 
     class Meta:
         verbose_name = "カスタムユーザー"

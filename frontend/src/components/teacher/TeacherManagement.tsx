@@ -17,16 +17,17 @@ import {
   School,
   Mail,
 } from "lucide-react";
-import { useToast } from "../../contexts/ToastContext";
-import teacherService from "../../services/teacherService";
+import { useToast } from "@/contexts/ToastContext";
+import teacherService from "@/services/teacherService";
 import TeacherModal from "./TeacherModal";
 import ConfirmModal from "./../common/ConfirmModal";
+import { PageSpinner } from "../common/LoadingSpinner";
 import type {
   Teacher,
   PaginationInfo,
   TeacherListResponse,
   TeacherFilterParams,
-} from "../../types/teacher";
+} from "@/types/teacher";
 
 const TeacherManagement: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -148,14 +149,7 @@ const TeacherManagement: React.FC = () => {
   };
 
   if (loading && !teachers.length) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">講師一覧を読み込み中...</p>
-        </div>
-      </div>
-    );
+    return <PageSpinner text="講師一覧を読み込み中..." />;
   }
 
   return (

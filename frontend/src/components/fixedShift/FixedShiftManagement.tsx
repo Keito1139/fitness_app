@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import { Calendar, AlertTriangle, Copy, BarChart3 } from "lucide-react";
-import { useToast } from "../../contexts/ToastContext";
-import { shiftApi } from "../../services/fixedShiftService";
-import type { User } from "../../types/user";
-import type { ConflictResult } from "../../types/fixedShift";
+import { useToast } from "@/contexts/ToastContext";
+import { shiftApi } from "@/services/fixedShiftService";
+import type { User } from "@/types/user";
+import type { ConflictResult } from "@/types/fixedShift";
 import FixedShiftScheduleGrid from "./FixedShiftScheduleGrid";
+import { ButtonSpinner } from "../common/LoadingSpinner";
 
 interface ShiftManagementProps {
   user: User;
@@ -145,7 +146,7 @@ const ShiftManagement: React.FC<ShiftManagementProps> = ({ user }) => {
                 className="inline-flex items-center px-4 py-2 border border-orange-300 text-sm font-medium rounded-md text-orange-700 bg-orange-50 hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50"
               >
                 {loadingConflicts ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2"></div>
+                  <ButtonSpinner text="" color="gray" />
                 ) : (
                   <AlertTriangle className="h-4 w-4 mr-2" />
                 )}
@@ -390,10 +391,7 @@ const ShiftManagement: React.FC<ShiftManagementProps> = ({ user }) => {
                     className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                   >
                     {copying ? (
-                      <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        コピー中...
-                      </div>
+                      <ButtonSpinner text="コピー中..." color="white" />
                     ) : (
                       "コピー実行"
                     )}

@@ -16,19 +16,20 @@ import {
   AlertTriangle,
   Clock,
 } from "lucide-react";
-import { shiftApi } from "../../services/fixedShiftService";
-import { useToast } from "../../contexts/ToastContext";
+import { shiftApi } from "@/services/fixedShiftService";
+import { useToast } from "@/contexts/ToastContext";
 import type {
   FixedShiftGrid,
   FixedShift,
   TimeSlot,
   ShiftPosition,
   DaySchedule,
-} from "../../types/fixedShift";
-import type { Day, Place } from "../../types/config";
+} from "@/types/fixedShift";
+import type { Day, Place } from "@/types/config";
 import ShiftCreateModal from "./FixedShiftCreateModal";
 import ShiftEditModal from "./FixedShiftEditModal";
 import ConfirmModal from "../common/ConfirmModal";
+import LoadingSpinner from "../common/LoadingSpinner";
 
 interface FixedShiftScheduleGridProps {
   schoolId: number;
@@ -84,33 +85,40 @@ const FixedShiftScheduleGrid: React.FC<FixedShiftScheduleGridProps> = ({
     if (!gridData) return [];
 
     const slots: TimeSlot[] = [];
-
-    // 学校の始業・終業時間を使用（バックエンドから取得した値）
     let startHour = gridData.start_hour;
     let endHour = gridData.end_hour;
 
-    // school_start_time と school_end_time がある場合はそれを優先
     if (gridData.school_start_time && gridData.school_end_time) {
       startHour = parseInt(gridData.school_start_time.split(":")[0]);
       endHour = parseInt(gridData.school_end_time.split(":")[0]);
-
-      // 終業時間が分まで指定されている場合、その時間まで表示
       const endMinute = parseInt(gridData.school_end_time.split(":")[1]);
       if (endMinute > 0) {
         endHour += 1;
       }
     }
 
-    const totalMinutes = (endHour - startHour) * 60;
-
+    // 30分間隔でスロットを生成（より細かく）
     for (let hour = startHour; hour <= endHour; hour++) {
-      const position = (((hour - startHour) * 60) / totalMinutes) * 100;
+      // 毎時00分
+      const position = ((hour - startHour) / (endHour - startHour)) * 100;
       slots.push({
         hour,
         minute: 0,
         displayTime: `${hour.toString().padStart(2, "0")}:00`,
         position,
       });
+
+      // 毎時30分も追加（より詳細な表示のため）
+      if (hour < endHour) {
+        const halfPosition =
+          ((hour + 0.5 - startHour) / (endHour - startHour)) * 100;
+        slots.push({
+          hour,
+          minute: 30,
+          displayTime: `${hour.toString().padStart(2, "0")}:30`,
+          position: halfPosition,
+        });
+      }
     }
 
     return slots;
@@ -130,27 +138,34 @@ const FixedShiftScheduleGrid: React.FC<FixedShiftScheduleGridProps> = ({
   }, []);
 
   // シフトの位置計算
+  // シフトの位置計算
   const calculateShiftPosition = useCallback(
     (shift: FixedShift, startHour: number, endHour: number): ShiftPosition => {
-      const startTimeStr = shift.start_time.slice(0, 5); // HH:MM形式に変換
-      const endTimeStr = shift.end_time.slice(0, 5); // HH:MM形式に変換
-      const startTime = new Date(`2000-01-01T${startTimeStr}`);
-      const endTime = new Date(`2000-01-01T${endTimeStr}`);
+      // 時間文字列をHH:MM:SS形式から時間と分に分解
+      const [startHour_str, startMinute_str] = shift.start_time.split(":");
+      const [endHour_str, endMinute_str] = shift.end_time.split(":");
 
-      const startMinutes = startTime.getHours() * 60 + startTime.getMinutes();
-      const endMinutes = endTime.getHours() * 60 + endTime.getMinutes();
-      const totalMinutes = (endHour - startHour) * 60;
-      const baseMinutes = startHour * 60;
+      const startTotalMinutes =
+        parseInt(startHour_str) * 60 + parseInt(startMinute_str);
+      const endTotalMinutes =
+        parseInt(endHour_str) * 60 + parseInt(endMinute_str);
 
-      const top = ((startMinutes - baseMinutes) / totalMinutes) * 100;
-      const height = ((endMinutes - startMinutes) / totalMinutes) * 100;
+      // 修正: gridStartMinutes を startHour * 60 に変更
+      const gridStartMinutes = startHour * 60;
+      const gridEndMinutes = endHour * 60;
+      const gridTotalMinutes = gridEndMinutes - gridStartMinutes;
+
+      const top =
+        ((startTotalMinutes - gridStartMinutes) / gridTotalMinutes) * 100;
+      const height =
+        ((endTotalMinutes - startTotalMinutes) / gridTotalMinutes) * 100;
 
       return {
         shift,
         top: Math.max(0, top),
-        height: Math.max(3, height), // 最小高さを3%に縮小
-        startHour: startTime.getHours(),
-        endHour: endTime.getHours(),
+        height: Math.max(3, height),
+        startHour: parseInt(startHour_str),
+        endHour: parseInt(endHour_str),
       };
     },
     []
@@ -358,8 +373,7 @@ const FixedShiftScheduleGrid: React.FC<FixedShiftScheduleGridProps> = ({
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">読み込み中...</span>
+        <LoadingSpinner text="読み込み中..." />
       </div>
     );
   }
@@ -464,7 +478,7 @@ const FixedShiftScheduleGrid: React.FC<FixedShiftScheduleGridProps> = ({
               </div>
 
               {/* メイングリッド */}
-              <div className="flex h-[600px]">
+              <div className="flex h-[800px]">
                 {" "}
                 {/* 固定高さを設定 */}
                 {/* 時間軸 */}
@@ -508,7 +522,7 @@ const FixedShiftScheduleGrid: React.FC<FixedShiftScheduleGridProps> = ({
                         style={{
                           minWidth: `${placeWidth}px`,
                           width: `${placeWidth}px`,
-                          minHeight: "800px",
+                          minHeight: "1000px",
                         }}
                         onClick={(e) => {
                           const container = e.currentTarget;

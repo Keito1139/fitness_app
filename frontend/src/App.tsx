@@ -8,8 +8,9 @@ import {
   Navigate,
 } from "react-router-dom";
 import Login from "./components/Login";
-import Dashboard from "./components/Dashboard";
+import OwnerDashboard from "./components/OwnerDashboard";
 import AdminDashboard from "./components/AdminDashboard";
+import TeacherDashboard from "./components/TeacherDashboard";
 import { ToastProvider } from "./contexts/ToastContext";
 import ToastContainer from "./components/common/ToastContainer";
 import api from "./services/api";
@@ -71,7 +72,9 @@ function App(): React.JSX.Element {
     if (user.is_superuser) {
       return "/admin/overview";
     } else if (user.is_owner) {
-      return "/dashboard/overview";
+      return "/owner/overview";
+    } else if (user.is_teacher) {
+      return "/teacher/overview";
     }
     // その他の場合は一般ダッシュボードにリダイレクト
     return "/dashboard/overview";
@@ -129,14 +132,28 @@ function App(): React.JSX.Element {
 
             {/* オーナー画面 */}
             <Route
-              path="/dashboard/*"
+              path="/owner/*"
               element={
                 user ? (
                   user.is_superuser ? (
                     <Navigate to="/admin/overview" replace />
                   ) : (
-                    <Dashboard user={user} onLogout={handleLogout} />
+                    <OwnerDashboard user={user} onLogout={handleLogout} />
                   )
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+
+            {/* 講師画面 - 新規追加 */}
+            <Route
+              path="/teacher/*"
+              element={
+                user && user.is_teacher ? (
+                  <TeacherDashboard user={user} onLogout={handleLogout} />
+                ) : user ? (
+                  <Navigate to={getRedirectPath(user)} replace />
                 ) : (
                   <Navigate to="/login" replace />
                 )

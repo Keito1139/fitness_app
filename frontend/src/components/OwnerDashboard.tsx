@@ -1,4 +1,4 @@
-// frontend/src/components/Dashboard.tsx
+// frontend/src/components/OwnerDashboard.tsx
 
 import React, { useState, useEffect } from "react";
 import {
@@ -33,7 +33,7 @@ interface DashboardProps {
 
 type ActiveTab = "overview" | "teachers" | "schools" | "analytics" | "settings";
 
-const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
+const OwnerDashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -46,37 +46,37 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       id: "overview",
       name: "ダッシュボード",
       icon: Home,
-      path: "/dashboard/overview",
+      path: "/owner/overview",
     },
     {
       id: "teachers",
       name: "講師管理",
       icon: Users,
-      path: "/dashboard/teachers",
+      path: "/owner/teachers",
     },
     {
       id: "schools",
       name: "学校管理",
       icon: School,
-      path: "/dashboard/schools",
+      path: "/owner/schools",
     },
     {
       id: "analytics",
       name: "分析",
       icon: BarChart3,
-      path: "/dashboard/analytics",
+      path: "/owner/analytics",
     },
     {
       id: "settings",
       name: "設定",
       icon: Settings,
-      path: "/dashboard/settings",
+      path: "/owner/settings",
     },
     {
       id: "shifts",
       name: "固定シフト管理",
       icon: Calendar,
-      path: "/dashboard/shifts",
+      path: "/owner/shifts",
     },
   ];
 
@@ -105,7 +105,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   // ナビゲーション処理
   const handleTabChange = (tab: ActiveTab) => {
     setActiveTab(tab);
-    navigate(`/dashboard/${tab}`);
+    navigate(`/owner/${tab}`);
     setSidebarOpen(false); // モバイルでサイドバーを閉じる
   };
 
@@ -402,7 +402,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
             <Routes>
               <Route
                 path="/"
-                element={<Navigate to="/dashboard/overview" replace />}
+                element={<Navigate to="/owner/overview" replace />}
               />
               <Route path="/overview" element={<DashboardHome />} />
               <Route path="/teachers" element={<TeacherManagement />} />
@@ -442,4 +442,4 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   );
 };
 
-export default Dashboard;
+export default OwnerDashboard;

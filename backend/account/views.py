@@ -1,4 +1,4 @@
-# accounts/views.py
+# account/views.py
 
 from rest_framework import status, permissions, viewsets, filters
 from rest_framework.response import Response
@@ -44,6 +44,11 @@ class OwnerLoginView(APIView):
         errors = serializer.errors
         if 'non_field_errors' in errors:
             error_message = errors['non_field_errors'][0]
+            # オーナー権限不足の場合は403を返す（AdminLoginViewと同じ処理）
+            if 'オーナー権限が必要です' in error_message:
+                return Response({
+                    'error': error_message
+                }, status=status.HTTP_403_FORBIDDEN)
         else:
             error_message = 'ログインに失敗しました。'
             
@@ -101,6 +106,11 @@ class TeacherLoginView(APIView):
         errors = serializer.errors
         if 'non_field_errors' in errors:
             error_message = errors['non_field_errors'][0]
+            # 講師権限不足の場合は403を返す
+            if '講師権限が必要です' in error_message:
+                return Response({
+                    'error': error_message
+                }, status=status.HTTP_403_FORBIDDEN)
         else:
             error_message = 'ログインに失敗しました。'
             

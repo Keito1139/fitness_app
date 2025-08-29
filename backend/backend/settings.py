@@ -170,6 +170,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:8081",  # Expo開発サーバー
     "http://127.0.0.1:8081",  # Expo開発サーバー
+    "http://192.168.0.22:8081",  # 追加：実際のネットワークIP
+    "exp://192.168.0.22:8081", 
 ]
 
 # CSRF設定も同様に追加
@@ -178,6 +180,8 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:8081",  # 追加
     "http://127.0.0.1:8081",  # 追加
+    "http://192.168.0.22:8081",  # 追加
+    "http://192.168.0.22:8000",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False  # 明示的に設定
